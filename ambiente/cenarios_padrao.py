@@ -19,18 +19,28 @@ que "menor número de passos" e "menor custo" nem sempre coincidem.
 """
 
 from ambiente.celula import (
-    LIVRE as L,
-    GRAMA as G,
-    DIFICIL as D,
-    OBSTACULO as O,
-    FOCO as F,
-    PNEU,
-    VASO,
-    GARRAFA,
     BALDE,
     CAIXA_DAGUA,
     CALHA,
+    GARRAFA,
+    PNEU,
+    VASO,
     gerar_decoracoes_obstaculos,
+)
+from ambiente.celula import (
+    DIFICIL as D,
+)
+from ambiente.celula import (
+    FOCO as F,
+)
+from ambiente.celula import (
+    GRAMA as G,
+)
+from ambiente.celula import (
+    LIVRE as L,
+)
+from ambiente.celula import (
+    OBSTACULO as O,
 )
 from ambiente.cenario import Cenario
 

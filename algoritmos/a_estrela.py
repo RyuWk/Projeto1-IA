@@ -1,40 +1,41 @@
-import time
 import heapq
+import time
 
 from algoritmos.heuristica import manhattan
 
-def recriar_caminho(pais, inicio, objetivo):
+
+def reconstruir_caminho(pais, objetivo):
     caminho = []
     atual = objetivo
-
-    while atual != inicio:
+    while atual is not None:
         caminho.append(atual)
-        atual = pais[atual]
-
-    caminho.append(inicio)
-
+        atual = pais.get(atual)
     caminho.reverse()
-
     return caminho
 
-def busca_a_estrela(cenario, inicio, objetivo):
+def calcular_custo(cenario, caminho):
+    custo_total = 0
+    for posicao in caminho[1:]:
+        custo_total += cenario.obter_custo(posicao)
+    return custo_total
+
+def busca_a_estrela(cenario):
     inicio_tempo = time.perf_counter()
+
+    inicio = cenario.inicio
+    objetivo = cenario.objetivo
 
     fronteira = []
     visitados = set()
-    estados_expandidos = []
-    estados_gerados = []
+    estados_expandidos = 0
+    estados_gerados = 1
     fronteira_max = 1
-    pais = {}
-    custos = {} # g(n) de cada posição
 
-    custos[inicio] = 0
+    pais = {inicio: None}
+    custos = {inicio: 0}
+
     prioridade = custos[inicio] + manhattan(inicio, objetivo)
-
-    heapq.heappush(
-        fronteira,
-        (prioridade, inicio)
-    )
+    heapq.heappush(fronteira, (prioridade, inicio))
 
     while fronteira:
         prioridade, atual = heapq.heappop(fronteira)
@@ -43,50 +44,43 @@ def busca_a_estrela(cenario, inicio, objetivo):
             continue
 
         visitados.add(atual)
-        estados_expandidos.append(atual)
+        estados_expandidos += 1
 
         if atual == objetivo:
-            caminho = recriar_caminho(pais, inicio, objetivo)
-            
-            fim_tempo = time.perf_counter()
-            tempo_execucao = fim_tempo - inicio_tempo
-            
-            return caminho, tempo_execucao, estados_expandidos, estados_gerados, fronteira_max
+            caminho = reconstruir_caminho(pais, objetivo)
+            custo = calcular_custo(cenario, caminho)
+            passos = len(caminho) - 1
+            tempo_execucao = time.perf_counter() - inicio_tempo
 
-        vizinhos = cenario.obter_vizinhos(atual)
+            return {
+                "caminho": caminho,
+                "custo": custo,
+                "passos": passos,
+                "estados_expandidos": estados_expandidos,
+                "estados_gerados": estados_gerados,
+                "fronteira_max": fronteira_max,
+                "tempo_execucao": tempo_execucao
+            }
 
-        for vizinho in vizinhos:
+        for vizinho in cenario.obter_vizinhos(atual):
             novo_custo = custos[atual] + cenario.obter_custo(vizinho)
-            
-            if vizinho not in custos:
+
+            if vizinho not in custos or novo_custo < custos[vizinho]:
                 custos[vizinho] = novo_custo
                 pais[vizinho] = atual
-
-                estados_gerados.append(vizinho)
-
-                heuristica = manhattan(vizinho, objetivo)
-                prioridade = novo_custo + heuristica
-
-                heapq.heappush(
-                    fronteira,
-                    (prioridade, vizinho)
-                )
-
-            elif novo_custo < custos[vizinho]:
-                custos[vizinho] = novo_custo
-                pais[vizinho] = atual
+                estados_gerados += 1
 
                 heuristica = manhattan(vizinho, objetivo)
-                prioridade = novo_custo + heuristica
+                nova_prioridade = novo_custo + heuristica
+                heapq.heappush(fronteira, (nova_prioridade, vizinho))
 
-                heapq.heappush(
-                    fronteira,
-                    (prioridade, vizinho)
-                )
+        fronteira_max = max(fronteira_max, len(fronteira))
 
-
-        if len(fronteira) > fronteira_max:
-            fronteira_max = len(fronteira)
-
-    return [], 0, estados_expandidos, estados_gerados, fronteira_max
-
+    tempo_execucao = time.perf_counter() - inicio_tempo
+    return {
+        "caminho": [], "custo": 0, "passos": 0,
+        "estados_expandidos": estados_expandidos,
+        "estados_gerados": estados_gerados,
+        "fronteira_max": fronteira_max,
+        "tempo_execucao": tempo_execucao
+    }
