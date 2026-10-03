@@ -1,10 +1,10 @@
 from ambiente.celula import (
-    LIVRE,
-    GRAMA,
-    DIFICIL,
-    OBSTACULO,
-    FOCO,
     CUSTOS_PADRAO,
+    DIFICIL,
+    FOCO,
+    GRAMA,
+    LIVRE,
+    OBSTACULO,
 )
 
 

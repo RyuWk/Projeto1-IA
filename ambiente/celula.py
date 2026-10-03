@@ -52,36 +52,36 @@ IMAGEM_FOCO = {
 MENSAGEM_FOCO = {
     PNEU: (
         "Pneu com água acumulada!",
-        "Pneus expostos à chuva acumulam água parada e se tornam criadouros "
+        ("Pneus expostos à chuva acumulam água parada e se tornam criadouros "
         "do mosquito. Fure, cubra ou armazene os pneus em local protegido "
-        "da chuva.",
+        "da chuva."),
     ),
     VASO: (
         "Vaso de planta com água parada!",
-        "Os pratinhos de vasos acumulam água facilmente. Troque a água a "
+        "Os pratinhos de vasos acumulam água facilmente. Troque a água a ",
         "cada 3 dias ou preencha o pratinho com areia até a borda.",
     ),
     GARRAFA: (
         "Garrafa destampada ao relento!",
-        "Garrafas e outros recipientes abertos acumulam água da chuva. "
+        ("Garrafas e outros recipientes abertos acumulam água da chuva. "
         "Mantenha-os tampados ou guardados de boca para baixo quando não "
-        "estiverem em uso.",
+        "estiverem em uso."),
     ),
     BALDE: (
         "Balde esquecido ao ar livre!",
-        "Baldes sem uso podem acumular água de chuva rapidamente. Guarde-os "
-        "virados para baixo ou em local coberto.",
+        ("Baldes sem uso podem acumular água de chuva rapidamente. Guarde-os "
+        "virados para baixo ou em local coberto."),
     ),
     CAIXA_DAGUA: (
         "Caixa-d'água ou tambor sem tampa adequada!",
-        "Reservatórios mal vedados são um dos principais criadouros do "
+        ("Reservatórios mal vedados são um dos principais criadouros do "
         "Aedes aegypti. Mantenha caixas-d'água e tambores sempre bem "
-        "fechados.",
+        "fechados."),
     ),
     CALHA: (
         "Calha entupida com água parada!",
-        "Folhas e sujeira acumuladas nas calhas retêm água da chuva. "
-        "Limpe as calhas periodicamente para evitar o acúmulo.",
+        ("Folhas e sujeira acumuladas nas calhas retêm água da chuva. "
+        "Limpe as calhas periodicamente para evitar o acúmulo."),
     ),
 }
 

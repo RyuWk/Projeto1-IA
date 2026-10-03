@@ -1,5 +1,5 @@
-from collections import deque
 import time
+from collections import deque
 
 
 def reconstruir_caminho(pais, inicio, objetivo):
@@ -122,8 +122,7 @@ def bfs(cenario):
                 estados_gerados += 1
 
         # Guarda o maior tamanho da fila
-        if len(fronteira) > fronteira_max:
-            fronteira_max = len(fronteira)
+        fronteira_max = max(fronteira_max, len(fronteira))
 
     # Caso não exista caminho até o objetivo
     fim_tempo = time.perf_counter()
