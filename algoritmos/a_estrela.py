@@ -28,6 +28,7 @@ def busca_a_estrela(cenario):
     fronteira = []
     visitados = set()
     estados_expandidos = 0
+    explorados = []
     estados_gerados = 1
     fronteira_max = 1
 
@@ -45,6 +46,7 @@ def busca_a_estrela(cenario):
 
         visitados.add(atual)
         estados_expandidos += 1
+        explorados.append(atual)
 
         if atual == objetivo:
             caminho = reconstruir_caminho(pais, objetivo)
@@ -57,6 +59,7 @@ def busca_a_estrela(cenario):
                 "custo": custo,
                 "passos": passos,
                 "estados_expandidos": estados_expandidos,
+                "explorados": explorados,
                 "estados_gerados": estados_gerados,
                 "fronteira_max": fronteira_max,
                 "tempo_execucao": tempo_execucao
@@ -80,6 +83,7 @@ def busca_a_estrela(cenario):
     return {
         "caminho": [], "custo": 0, "passos": 0,
         "estados_expandidos": estados_expandidos,
+        "explorados": explorados,
         "estados_gerados": estados_gerados,
         "fronteira_max": fronteira_max,
         "tempo_execucao": tempo_execucao

@@ -2,13 +2,26 @@ import sys
 
 import pygame
 
+from interface.interface import (
+    BRANCO,
+    COR_BORDA,
+    COR_FUNDO,
+    COR_PRIMARIA,
+    COR_TEXTO,
+    COR_TEXTO_MUTED,
+    COR_VERDE,
+    desenhar_card,
+    fonte,
+)
+
 # Cores da Interface (Seguindo padrão de legibilidade e bom contraste)
-COR_FUNDO = (245, 247, 250)
-COR_TEXTO = (30, 41, 59)
-COR_PRIMARIA = (37, 99, 235)      # Azul principal
-COR_HOVER = (29, 78, 216)         # Azul escuro ao passar o mouse
-COR_SELECIONADO = (16, 185, 129)  # Verde destaque
-COR_BORDAS = (203, 213, 225)
+COR_HOVER_CLARO = (239, 246, 255) # Fundo azulado claro ao passar o mouse
+COR_HOVER_VERDE = (5, 150, 105)
+
+# Medidas do card central do menu
+LARGURA_CARD = 760
+ALTURA_CARD = 600
+PADDING = 48
 
 class MenuInicial:
     def __init__(self, largura, altura):
@@ -21,83 +34,98 @@ class MenuInicial:
         pygame.display.set_caption("Combate à Dengue - Menu Inicial")
 
         # Fontes grandes e legíveis para garantir acessibilidade
-        self.fonte_titulo = pygame.font.SysFont("Arial", 28, bold=True)
-        self.fonte_subtitulo = pygame.font.SysFont("Arial", 20, bold=True)
-        self.fonte_opcao = pygame.font.SysFont("Arial", 16)
+        self.fonte_titulo = fonte(34, True)
+        self.fonte_subtitulo = fonte(18, True)
+        self.fonte_opcao = fonte(17, True)
+        self.fonte_texto = fonte(16)
 
         # Configurações selecionadas (Padrão)
         self.algoritmos = ["BFS (Largura)", "DFS (Profundidade)", "Gulosa", "A*"]
         self.cenarios = ["Cenário 1 (Pequeno)", "Cenário 2 (Médio)", "Cenário 3 (Complexo)"]
 
-        self.algoritmo_idx = 0  # Padrão: A*
+        self.algoritmo_idx = 0  # Padrão: BFS
         self.cenario_idx = 0     # Padrão: Cenário 1
 
         # Retorno das configurações
         self.iniciar_simulacao = False
 
-    def desenhar_botao(self, texto, x, y, w, h, ativo=False, hover=False):
-        cor_fundo = COR_SELECIONADO if ativo else (COR_HOVER if hover else COR_PRIMARIA)
-        rect = pygame.Rect(x, y, w, h)
+    def desenhar_botao(self, texto, rect, ativo=False, hover=False):
+        """Botão de opção: preenchido em azul quando selecionado, contornado caso contrário."""
+        if ativo:
+            pygame.draw.rect(self.tela, COR_PRIMARIA, rect, border_radius=10)
+            cor_texto = BRANCO
+        else:
+            pygame.draw.rect(self.tela, COR_HOVER_CLARO if hover else BRANCO, rect, border_radius=10)
+            pygame.draw.rect(self.tela, COR_PRIMARIA if hover else COR_BORDA, rect, width=2, border_radius=10)
+            cor_texto = COR_TEXTO
 
-        pygame.draw.rect(self.tela, cor_fundo, rect, border_radius=8)
-        pygame.draw.rect(self.tela, COR_BORDAS, rect, width=2, border_radius=8)
-
-        surf_texto = self.fonte_opcao.render(texto, True, (255, 255, 255))
-        rect_texto = surf_texto.get_rect(center=rect.center)
-        self.tela.blit(surf_texto, rect_texto)
+        surf_texto = self.fonte_opcao.render(texto, True, cor_texto)
+        self.tela.blit(surf_texto, surf_texto.get_rect(center=rect.center))
 
         return rect
 
     def renderizar(self):
         self.tela.fill(COR_FUNDO)
 
+        rect_card = pygame.Rect(0, 0, LARGURA_CARD, ALTURA_CARD)
+        rect_card.center = (self.largura // 2, self.altura // 2)
+        desenhar_card(self.tela, rect_card, raio=20)
+
+        x = rect_card.x + PADDING
+        largura_util = LARGURA_CARD - 2 * PADDING
+        centro_x = rect_card.centerx
+
         # Título do Jogo Educacional / Simulador
         titulo = self.fonte_titulo.render("Agente de Combate à Dengue", True, COR_TEXTO)
-        subtitulo = self.fonte_opcao.render("Selecione as configurações do cenário e do agente", True, (100, 116, 139))
+        subtitulo = self.fonte_texto.render("Selecione as configurações do cenário e do agente", True, COR_TEXTO_MUTED)
 
-        self.tela.blit(titulo, (self.largura // 2 - titulo.get_width() // 2, 40))
-        self.tela.blit(subtitulo, (self.largura // 2 - subtitulo.get_width() // 2, 80))
+        self.tela.blit(titulo, titulo.get_rect(center=(centro_x, rect_card.y + 64)))
+        self.tela.blit(subtitulo, subtitulo.get_rect(center=(centro_x, rect_card.y + 104)))
+        pygame.draw.line(self.tela, COR_BORDA, (x, rect_card.y + 136), (x + largura_util, rect_card.y + 136))
 
         pos_mouse = pygame.mouse.get_pos()
         self.botoes_algoritmo = []
         self.botoes_cenario = []
 
-        # 1. Seleção de Algoritmo
-        lbl_alg = self.fonte_subtitulo.render("1. Escolha o Algoritmo de Busca:", True, COR_TEXTO)
-        self.tela.blit(lbl_alg, (80, 140))
+        # 1. Seleção de Algoritmo (grade 2x2)
+        y = rect_card.y + 164
+        lbl_alg = self.fonte_subtitulo.render("1. Escolha o Algoritmo de Busca", True, COR_TEXTO)
+        self.tela.blit(lbl_alg, (x, y))
 
-        y_alg = 180
+        espaco = 16
+        largura_alg = (largura_util - espaco) // 2
         for i, alg in enumerate(self.algoritmos):
-            x_alg = 80 + (i % 2) * 320
-            if i == 2:
-                y_alg += 60
-
-            rect = pygame.Rect(x_alg, y_alg, 300, 45)
-            is_hover = rect.collidepoint(pos_mouse)
-            is_ativo = (i == self.algoritmo_idx)
-
-            b_rect = self.desenhar_botao(alg, x_alg, y_alg, 300, 45, ativo=is_ativo, hover=is_hover)
+            rect = pygame.Rect(
+                x + (i % 2) * (largura_alg + espaco),
+                y + 40 + (i // 2) * (52 + 12),
+                largura_alg,
+                52,
+            )
+            b_rect = self.desenhar_botao(
+                alg, rect, ativo=(i == self.algoritmo_idx), hover=rect.collidepoint(pos_mouse)
+            )
             self.botoes_algoritmo.append((b_rect, i))
 
-        # 2. Seleção de Cenário
-        lbl_cen = self.fonte_subtitulo.render("2. Escolha o Cenário (Mapa):", True, COR_TEXTO)
-        self.tela.blit(lbl_cen, (80, 310))
+        # 2. Seleção de Cenário (uma linha com três opções)
+        y = rect_card.y + 340
+        lbl_cen = self.fonte_subtitulo.render("2. Escolha o Cenário (Mapa)", True, COR_TEXTO)
+        self.tela.blit(lbl_cen, (x, y))
 
+        largura_cen = (largura_util - 2 * espaco) // 3
         for i, cen in enumerate(self.cenarios):
-            x_cen = 80 + i * 215
-            rect = pygame.Rect(x_cen, 350, 200, 45)
-            is_hover = rect.collidepoint(pos_mouse)
-            is_ativo = (i == self.cenario_idx)
-
-            b_rect = self.desenhar_botao(cen, x_cen, 350, 200, 45, ativo=is_ativo, hover=is_hover)
+            rect = pygame.Rect(x + i * (largura_cen + espaco), y + 40, largura_cen, 52)
+            b_rect = self.desenhar_botao(
+                cen, rect, ativo=(i == self.cenario_idx), hover=rect.collidepoint(pos_mouse)
+            )
             self.botoes_cenario.append((b_rect, i))
 
         # 3. Botão Iniciar
-        rect_iniciar = pygame.Rect(self.largura // 2 - 120, 460, 240, 55)
+        rect_iniciar = pygame.Rect(0, 0, 300, 60)
+        rect_iniciar.center = (centro_x, rect_card.bottom - 72)
         is_hover_iniciar = rect_iniciar.collidepoint(pos_mouse)
 
-        pygame.draw.rect(self.tela, COR_HOVER if is_hover_iniciar else COR_PRIMARIA, rect_iniciar, border_radius=12)
-        txt_iniciar = self.fonte_subtitulo.render("INICIAR MISSÃO", True, (255, 255, 255))
+        pygame.draw.rect(self.tela, COR_HOVER_VERDE if is_hover_iniciar else COR_VERDE, rect_iniciar, border_radius=14)
+        txt_iniciar = fonte(20, True).render("INICIAR MISSÃO", True, BRANCO)
         self.tela.blit(txt_iniciar, txt_iniciar.get_rect(center=rect_iniciar.center))
 
         self.btn_iniciar = rect_iniciar

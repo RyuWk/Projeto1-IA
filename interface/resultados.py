@@ -1,6 +1,8 @@
 import sys
 import pygame
 
+from interface.interface import desenhar_card, fonte
+
 # --- SEÇÃO 1: CONFIGURAÇÃO DE CORES E ESTILOS DA INTERFACE ---
 COR_FUNDO = (245, 247, 250)
 COR_CARD_JOGADOR = (238, 242, 255)  # Tom azulado claro para o humano
@@ -11,7 +13,6 @@ COR_AZUL = (37, 99, 235)
 COR_VERDE = (16, 185, 129)
 COR_VERMELHO = (220, 38, 38)
 COR_BORDA = (203, 213, 225)
-COR_HOVER = (29, 78, 216)
 
 
 class TelaResultados:
@@ -26,11 +27,11 @@ class TelaResultados:
         self.largura, self.altura = dimensoes
 
         # --- SEÇÃO 2: INICIALIZAÇÃO DAS FONTES DOS MÓDULOS VISUAIS ---
-        self.fonte_titulo = pygame.font.SysFont("Arial", 28, bold=True)
-        self.fonte_subtitulo = pygame.font.SysFont("Arial", 20, bold=True)
-        self.fonte_rotulo = pygame.font.SysFont("Arial", 16, bold=True)
-        self.fonte_valor = pygame.font.SysFont("Arial", 16)
-        self.fonte_destaque = pygame.font.SysFont("Arial", 18, bold=True)
+        self.fonte_titulo = fonte(32, True)
+        self.fonte_subtitulo = fonte(20, True)
+        self.fonte_rotulo = fonte(16, True)
+        self.fonte_valor = fonte(16)
+        self.fonte_destaque = fonte(18, True)
 
     def desenhar_card_metricas(
         self, x, y, largura, altura, titulo, cor_fundo, metricas
@@ -41,10 +42,7 @@ class TelaResultados:
         """
         # Desenho do retângulo de fundo do card
         rect_card = pygame.Rect(x, y, largura, altura)
-        pygame.draw.rect(self.tela, cor_fundo, rect_card, border_radius=12)
-        pygame.draw.rect(
-            self.tela, COR_BORDA, rect_card, width=2, border_radius=12
-        )
+        desenhar_card(self.tela, rect_card, cor=cor_fundo)
 
         # Desenho do título do participante
         surf_titulo = self.fonte_subtitulo.render(
@@ -82,10 +80,10 @@ class TelaResultados:
         """
         rect = pygame.Rect(x, y, w, h)
         is_hover = rect.collidepoint(pos_mouse)
-        cor_final = COR_HOVER if is_hover else cor_padrao
+        # Ao passar o mouse, escurece levemente a cor do próprio botão
+        cor_final = tuple(int(c * 0.85) for c in cor_padrao) if is_hover else cor_padrao
 
-        pygame.draw.rect(self.tela, cor_final, rect, border_radius=8)
-        pygame.draw.rect(self.tela, COR_BORDA, rect, width=1, border_radius=8)
+        pygame.draw.rect(self.tela, cor_final, rect, border_radius=10)
 
         surf_txt = self.fonte_subtitulo.render(texto, True, (255, 255, 255))
         self.tela.blit(surf_txt, surf_txt.get_rect(center=rect.center))
@@ -143,30 +141,38 @@ class TelaResultados:
             pos_mouse = pygame.mouse.get_pos()
             self.tela.fill(COR_FUNDO)
 
+            # Medidas do bloco de conteúdo, centralizado na tela
+            largura_card = 580
+            # Altura do card ajustada à maior lista de métricas
+            altura_card = 60 + max(len(metricas_jogador), len(metricas_agente)) * 33 + 20
+            espaco_cards = 40
+            altura_conteudo = 70 + 30 + 45 + 30 + altura_card + 40 + 54
+            y = (self.altura - altura_conteudo) // 2
+
             # Título superior
             txt_titulo = self.fonte_titulo.render(
                 "Resultados Comparativos da Missão", True, COR_TEXTO_ESCURO
             )
             txt_sub = self.fonte_valor.render(
-                f"Algoritmo: {nome_algoritmo} | Cenário: {nome_cenario}",
+                f"Algoritmo: {nome_algoritmo}  •  Cenário: {nome_cenario}",
                 True,
                 COR_TEXTO_MUTED,
             )
             self.tela.blit(
-                txt_titulo,
-                (self.largura // 2 - txt_titulo.get_width() // 2, 25),
+                txt_titulo, txt_titulo.get_rect(center=(self.largura // 2, y + 20))
             )
             self.tela.blit(
-                txt_sub, (self.largura // 2 - txt_sub.get_width() // 2, 65)
+                txt_sub, txt_sub.get_rect(center=(self.largura // 2, y + 60))
             )
+            y += 100
 
             # Banner indicativo de comparação
-            rect_banner = pygame.Rect(self.largura // 2 - 320, 100, 640, 45)
+            rect_banner = pygame.Rect(self.largura // 2 - 340, y, 680, 45)
             pygame.draw.rect(
-                self.tela, COR_CARD_AGENTE, rect_banner, border_radius=8
+                self.tela, COR_CARD_AGENTE, rect_banner, border_radius=10
             )
             pygame.draw.rect(
-                self.tela, COR_VERDE, rect_banner, width=2, border_radius=8
+                self.tela, COR_VERDE, rect_banner, width=2, border_radius=10
             )
             txt_venc = self.fonte_destaque.render(
                 vencedor_str, True, COR_TEXTO_ESCURO
@@ -174,15 +180,15 @@ class TelaResultados:
             self.tela.blit(
                 txt_venc, txt_venc.get_rect(center=rect_banner.center)
             )
+            y += 45 + 30
 
-            # Renderização dos Cards comparativos
-            largura_card = 580
-            altura_card = 350
-            y_cards = 165
+            # Renderização dos Cards comparativos, lado a lado e centralizados
+            x_card_jogador = self.largura // 2 - espaco_cards // 2 - largura_card
+            x_card_agente = self.largura // 2 + espaco_cards // 2
 
             self.desenhar_card_metricas(
-                int(self.largura * 0.25 - largura_card // 2),
-                y_cards,
+                x_card_jogador,
+                y,
                 largura_card,
                 altura_card,
                 "Usuário (Decisão Humana)",
@@ -191,41 +197,43 @@ class TelaResultados:
             )
 
             self.desenhar_card_metricas(
-                int(self.largura * 0.75 - largura_card // 2),
-                y_cards,
+                x_card_agente,
+                y,
                 largura_card,
                 altura_card,
                 f"Agente ({nome_algoritmo})",
                 COR_CARD_AGENTE,
                 metricas_agente,
             )
+            y += altura_card + 40
 
             # Desenho dos botões de ação no rodapé
-            y_botoes = 560
+            largura_botao, espaco_botoes = 210, 20
+            x_botoes = self.largura // 2 - (3 * largura_botao + 2 * espaco_botoes) // 2
             btn_reiniciar = self.desenhar_botao(
                 "Reiniciar Missão",
-                self.largura // 2 - 320,
-                y_botoes,
-                200,
-                50,
+                x_botoes,
+                y,
+                largura_botao,
+                54,
                 COR_AZUL,
                 pos_mouse,
             )
             btn_menu = self.desenhar_botao(
                 "Menu Principal",
-                self.largura // 2 - 100,
-                y_botoes,
-                200,
-                50,
+                x_botoes + largura_botao + espaco_botoes,
+                y,
+                largura_botao,
+                54,
                 COR_VERDE,
                 pos_mouse,
             )
             btn_sair = self.desenhar_botao(
                 "Sair",
-                self.largura // 2 + 120,
-                y_botoes,
-                200,
-                50,
+                x_botoes + 2 * (largura_botao + espaco_botoes),
+                y,
+                largura_botao,
+                54,
                 COR_VERMELHO,
                 pos_mouse,
             )
