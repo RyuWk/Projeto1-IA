@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-
 import pygame
 
 from algoritmos.a_estrela import busca_a_estrela
@@ -15,15 +14,13 @@ from ambiente.celula import (
     IMAGEM_USUARIO,
     OBSTACULO,
 )
-
-# Importações dos módulos do projeto[cite: 15]
 from ambiente.cenarios_padrao import obter_cenario
 from interface.interface import desenhar_tela_principal, mostrar_mensagem_educativa
-from interface.menu import (
-    MenuInicial,  # Integração da classe exata fornecida[cite: 14, 15]
-)
+from interface.menu import MenuInicial
+from interface.resultados import TelaResultados  # Importação da nova tela de resultados
 
 
+# --- SEÇÃO 1: ESTRUTURA DE DADOS DOS PARTICIPANTES ---
 class EstadoParticipante:
     """Classe auxiliar para armazenar as métricas em tempo real de cada participante."""
     def __init__(self, inicio):
@@ -37,6 +34,12 @@ class EstadoParticipante:
 
         self.indice_caminho = 0
         self.caminho_pre_calculado = []
+
+        # Métricas de busca exclusivas do Agente Inteligente (exigidas no trabalho)
+        self.estados_expandidos = 0
+        self.estados_gerados = 0
+        self.fronteira_max = 0
+
 
 def carregar_imagens(tamanho_celula=40):
     imagens = {}
@@ -63,6 +66,7 @@ def carregar_imagens(tamanho_celula=40):
 
     return imagens
 
+
 def processar_movimento_jogador(evento_tecla, estado, cenario):
     if estado.concluiu:
         return
@@ -79,7 +83,7 @@ def processar_movimento_jogador(evento_tecla, estado, cenario):
     elif evento_tecla == pygame.K_RIGHT:
         nova_posicao = (linha, coluna + 1)
 
-    if cenario._dentro_dos_limites(nova_posicao):  # noqa: SIM102
+    if cenario._dentro_dos_limites(nova_posicao):
         if cenario.mapa[nova_posicao[0]][nova_posicao[1]] != OBSTACULO:
             estado.posicao = nova_posicao
             estado.passos += 1
@@ -90,28 +94,15 @@ def processar_movimento_jogador(evento_tecla, estado, cenario):
                 estado.concluiu = True
 
 
+# --- SEÇÃO 2: CONTROLADOR PRINCIPAL DA APLICAÇÃO (SEM RECURSÃO) ---
 def main():
     pygame.init()
 
     LARGURA, ALTURA = 1600, 900
-
-    # 1. INTEGRAÇÃO DO MENU[cite: 14]
-    # Instancia o menu e assume o controle da tela até o clique no botão Iniciar[cite: 14]
-    menu = MenuInicial(LARGURA, ALTURA)
-    escolhas_usuario = menu.executar()
-
-    # Extração das opções configuradas pelo usuário[cite: 14]
-    nome_algoritmo = escolhas_usuario["algoritmo"]
-    # Ajuste do índice (0, 1, 2) para o ID real do cenário (1, 2, 3)
-    id_cenario = escolhas_usuario["cenario_idx"] + 1
-
-    # Retoma o controle da tela para a simulação principal
     tela = pygame.display.set_mode((LARGURA, ALTURA))
-    pygame.display.set_caption(f"Combate à Dengue - IA ({nome_algoritmo} | Cenário {id_cenario})")
     relogio = pygame.time.Clock()
 
     todas_imagens = carregar_imagens(tamanho_celula=40)
-
     imagens_jogador = todas_imagens.copy()
     imagens_jogador["personagem"] = todas_imagens["usuario"]
     imagens_agente = todas_imagens.copy()
@@ -119,107 +110,126 @@ def main():
 
     rodando_app = True
     while rodando_app:
+        # Loop do Menu Inicial
+        menu = MenuInicial(LARGURA, ALTURA)
+        escolhas_usuario = menu.executar()
 
-        # Carrega o cenário escolhido no menu
-        cenario = obter_cenario(id_cenario)
+        nome_algoritmo = escolhas_usuario["algoritmo"]
+        id_cenario = escolhas_usuario["cenario_idx"] + 1
 
-        # ----------------- INTEGRAÇÃO DOS ALGORITMOS -----------------
-            # Verifica a string vinda do menu para acionar a função correta
-        if "BFS" in nome_algoritmo:
-            resultado_agente = bfs(cenario)
-        elif "DFS" in nome_algoritmo:
-            resultado_agente = dfs(cenario)
-        elif "Gulosa" in nome_algoritmo:
-            resultado_agente = busca_gulosa(cenario)
-        elif "A*" in nome_algoritmo:
-            resultado_agente = busca_a_estrela(cenario)
-        else:
-            resultado_agente = bfs(cenario) # Fallback de segurança
-        # ------------------- FIM MOCK --------------------------------
+        em_missao = True
+        while em_missao:
+            pygame.display.set_caption(f"Combate à Dengue - IA ({nome_algoritmo} | Cenário {id_cenario})")
+            cenario = obter_cenario(id_cenario)
 
-        # 2. Inicializar estados considerando que o usuário e agente devem resolver a mesma instância[cite: 18]
-        estado_jogador = EstadoParticipante(cenario.inicio)
-        estado_agente = EstadoParticipante(cenario.inicio)
+            # Execução do algoritmo de busca selecionado
+            if "BFS" in nome_algoritmo:
+                resultado_agente = bfs(cenario)
+            elif "DFS" in nome_algoritmo:
+                resultado_agente = dfs(cenario)
+            elif "Gulosa" in nome_algoritmo:
+                resultado_agente = busca_gulosa(cenario)
+            elif "A*" in nome_algoritmo:
+                resultado_agente = busca_a_estrela(cenario)
+            else:
+                resultado_agente = bfs(cenario)
 
-        estado_agente.caminho_pre_calculado = resultado_agente["caminho"]
-        estado_agente.tempo_execucao = resultado_agente["tempo_execucao"]
+            # Instanciação dos participantes
+            estado_jogador = EstadoParticipante(cenario.inicio)
+            estado_agente = EstadoParticipante(cenario.inicio)
 
-        # 3. Variáveis de Controle da Simulação
-        TEMPO_MOVIMENTO_AGENTE = 500
-        ultimo_tempo_agente = pygame.time.get_ticks()
-        tempo_inicio_missao = time.time()
+            # População das métricas do Agente a partir do dicionário de retorno da busca
+            estado_agente.caminho_pre_calculado = resultado_agente.get("caminho", [])
+            estado_agente.tempo_execucao = resultado_agente.get("tempo_execucao", 0.0)
+            estado_agente.estados_expandidos = resultado_agente.get("estados_expandidos", 0)
+            estado_agente.estados_gerados = resultado_agente.get("estados_gerados", 0)
+            estado_agente.fronteira_max = resultado_agente.get("fronteira_max", 0)
 
-        missao_ativa = True
-        mostrar_resultados_finais = False
+            TEMPO_MOVIMENTO_AGENTE = 500
+            ultimo_tempo_agente = pygame.time.get_ticks()
+            tempo_inicio_missao = time.time()
 
-        # 4. LOOP DA MISSÃO SIMULTÂNEA[cite: 18]
-        while missao_ativa:
-            tempo_atual = pygame.time.get_ticks()
+            missao_ativa = True
+            mostrar_resultados_finais = False
+            retangulo_voltar = pygame.Rect(0, 0, 0, 0)  # Evita erro de variável não declarada
 
-            # A. Processamento de Eventos (Usuário)
-            for evento in pygame.event.get():
-                if evento.type == pygame.QUIT:
-                    missao_ativa = False
-                    rodando_app = False
+            # --- SEÇÃO 3: LOOP DE SIMULAÇÃO EM TEMPO REAL ---
+            while missao_ativa:
+                tempo_atual = pygame.time.get_ticks()
 
-                elif evento.type == pygame.MOUSEBUTTONDOWN:
-                    if retangulo_voltar.collidepoint(evento.pos):
-                        # Quebra o loop da missão e permite voltar (você pode redirecionar pro menu aqui)
-                        main()
-                        return
-
-                elif evento.type == pygame.KEYDOWN:
-                    if evento.key == pygame.K_RETURN and estado_jogador.concluiu and estado_agente.concluiu:
-                        mostrar_resultados_finais = True
+                for evento in pygame.event.get():
+                    if evento.type == pygame.QUIT:
                         missao_ativa = False
+                        em_missao = False
+                        rodando_app = False
 
-                    elif not estado_jogador.concluiu:
-                        processar_movimento_jogador(evento.key, estado_jogador, cenario)
-                        if estado_jogador.concluiu:
-                            estado_jogador.tempo = time.time() - tempo_inicio_missao
+                    elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+                        if retangulo_voltar.collidepoint(evento.pos):
+                            missao_ativa = False
+                            em_missao = False  # Retorna ao Menu sem recursão
 
-            # B. Movimentação Automática do Agente
-            if not estado_agente.concluiu:  # noqa: SIM102
-                if tempo_atual - ultimo_tempo_agente > TEMPO_MOVIMENTO_AGENTE:
-                    if estado_agente.indice_caminho < len(estado_agente.caminho_pre_calculado) - 1:
-                        estado_agente.indice_caminho += 1
-                        nova_pos = estado_agente.caminho_pre_calculado[estado_agente.indice_caminho]
+                    elif evento.type == pygame.KEYDOWN:
+                        if evento.key == pygame.K_RETURN and estado_jogador.concluiu and estado_agente.concluiu:
+                            mostrar_resultados_finais = True
+                            missao_ativa = False
 
-                        estado_agente.posicao = nova_pos
-                        estado_agente.passos += 1
-                        estado_agente.custo += cenario.obter_custo(nova_pos)
+                        elif not estado_jogador.concluiu:
+                            processar_movimento_jogador(evento.key, estado_jogador, cenario)
+                            if estado_jogador.concluiu:
+                                estado_jogador.tempo = time.time() - tempo_inicio_missao
 
-                        if cenario.teste_objetivo(nova_pos):
-                            estado_agente.concluiu = True
+                # Movimentação passo-a-passo do agente no grid
+                if not estado_agente.concluiu:
+                    if tempo_atual - ultimo_tempo_agente > TEMPO_MOVIMENTO_AGENTE:
+                        if estado_agente.indice_caminho < len(estado_agente.caminho_pre_calculado) - 1:
+                            estado_agente.indice_caminho += 1
+                            nova_pos = estado_agente.caminho_pre_calculado[estado_agente.indice_caminho]
 
-                    ultimo_tempo_agente = tempo_atual
+                            estado_agente.posicao = nova_pos
+                            estado_agente.passos += 1
+                            estado_agente.custo += cenario.obter_custo(nova_pos)
+                            estado_agente.caminho.append(nova_pos)
 
-            # C. Atualização do Cronômetro do Jogador
-            if not estado_jogador.concluiu:
-                estado_jogador.tempo = time.time() - tempo_inicio_missao
+                            if cenario.teste_objetivo(nova_pos):
+                                estado_agente.concluiu = True
 
-            # D. Renderização da Tela
-            retangulo_voltar = desenhar_tela_principal(
-                            tela, (LARGURA, ALTURA), cenario,
-                            estado_jogador, estado_agente,
-                            imagens_jogador, imagens_agente
-                        )
+                        ultimo_tempo_agente = tempo_atual
 
-            # E. Exibir Mensagem Educativa ao Finalizar (A missão permanece ativa até ambos chegarem)[cite: 18]
-            if estado_jogador.concluiu and estado_agente.concluiu:
-                tipo_foco = cenario.obter_tipo_foco(cenario.objetivo)
-                mostrar_mensagem_educativa(tela, (LARGURA, ALTURA), tipo_foco)
+                if not estado_jogador.concluiu:
+                    estado_jogador.tempo = time.time() - tempo_inicio_missao
 
-            pygame.display.flip()
-            relogio.tick(30)
+                # Renderização da tela principal
+                retangulo_voltar = desenhar_tela_principal(
+                    tela, (LARGURA, ALTURA), cenario,
+                    estado_jogador, estado_agente,
+                    imagens_jogador, imagens_agente
+                )
 
-        # 5. Redirecionamento Pós-Missão
-        if mostrar_resultados_finais:
-            # Integração pendente com resultados.py (Pessoa 5)[cite: 15]
-            break
+                if estado_jogador.concluiu and estado_agente.concluiu:
+                    tipo_foco = cenario.obter_tipo_foco(cenario.objetivo)
+                    mostrar_mensagem_educativa(tela, (LARGURA, ALTURA), tipo_foco)
+
+                pygame.display.flip()
+                relogio.tick(30)
+
+            # --- SEÇÃO 4: TRANSIÇÃO PARA A TELA DE RESULTADOS ---
+            if mostrar_resultados_finais:
+                tela_res = TelaResultados(tela, (LARGURA, ALTURA))
+                opcao_escolhida = tela_res.exibir(
+                    estado_jogador, estado_agente, nome_algoritmo, cenario.nome
+                )
+
+                if opcao_escolhida == "REINICIAR":
+                    em_missao = True
+                elif opcao_escolhida == "MENU":
+                    em_missao = False
+                elif opcao_escolhida == "SAIR":
+                    em_missao = False
+                    rodando_app = False
 
     pygame.quit()
     sys.exit()
+
 
 if __name__ == "__main__":
     main()
