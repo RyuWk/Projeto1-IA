@@ -71,12 +71,17 @@ def dfs(cenario):
     estados_gerados = 1
     fronteira_max = 1
 
+    # Ordem em que as posições foram expandidas (usada na visualização)
+    explorados = []
+
     while fronteira:
 
         # Remove o último elemento da pilha
         atual = fronteira.pop()
 
         estados_expandidos += 1
+
+        explorados.append(atual)
 
         # Verifica se chegou ao objetivo
         if atual == objetivo:
@@ -101,6 +106,7 @@ def dfs(cenario):
                 "custo": custo,
                 "passos": passos,
                 "estados_expandidos": estados_expandidos,
+                "explorados": explorados,
                 "estados_gerados": estados_gerados,
                 "fronteira_max": fronteira_max,
                 "tempo_execucao": fim_tempo - inicio_tempo
@@ -132,6 +138,7 @@ def dfs(cenario):
         "custo": 0,
         "passos": 0,
         "estados_expandidos": estados_expandidos,
+        "explorados": explorados,
         "estados_gerados": estados_gerados,
         "fronteira_max": fronteira_max,
         "tempo_execucao": fim_tempo - inicio_tempo

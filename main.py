@@ -15,7 +15,11 @@ from ambiente.celula import (
     OBSTACULO,
 )
 from ambiente.cenarios_padrao import obter_cenario
-from interface.interface import desenhar_tela_principal, mostrar_mensagem_educativa
+from interface.interface import (
+    calcular_tamanho_celula,
+    desenhar_tela_principal,
+    mostrar_mensagem_educativa,
+)
 from interface.menu import MenuInicial
 from interface.resultados import TelaResultados  # Importação da nova tela de resultados
 
@@ -39,6 +43,10 @@ class EstadoParticipante:
         self.estados_expandidos = 0
         self.estados_gerados = 0
         self.fronteira_max = 0
+
+        # Visualização da busca: posições expandidas (em ordem) e quantas já foram exibidas
+        self.explorados = []
+        self.indice_exploracao = 0
 
 
 def carregar_imagens(tamanho_celula=40):
@@ -102,12 +110,6 @@ def main():
     tela = pygame.display.set_mode((LARGURA, ALTURA))
     relogio = pygame.time.Clock()
 
-    todas_imagens = carregar_imagens(tamanho_celula=40)
-    imagens_jogador = todas_imagens.copy()
-    imagens_jogador["personagem"] = todas_imagens["usuario"]
-    imagens_agente = todas_imagens.copy()
-    imagens_agente["personagem"] = todas_imagens["agente"]
-
     rodando_app = True
     while rodando_app:
         # Loop do Menu Inicial
@@ -121,6 +123,14 @@ def main():
         while em_missao:
             pygame.display.set_caption(f"Combate à Dengue - IA ({nome_algoritmo} | Cenário {id_cenario})")
             cenario = obter_cenario(id_cenario)
+
+            # O tamanho das células se ajusta ao cenário para ocupar bem a tela
+            tamanho_celula = calcular_tamanho_celula(cenario, (LARGURA, ALTURA))
+            todas_imagens = carregar_imagens(tamanho_celula=tamanho_celula)
+            imagens_jogador = todas_imagens.copy()
+            imagens_jogador["personagem"] = todas_imagens["usuario"]
+            imagens_agente = todas_imagens.copy()
+            imagens_agente["personagem"] = todas_imagens["agente"]
 
             # Execução do algoritmo de busca selecionado
             if "BFS" in nome_algoritmo:
@@ -144,9 +154,13 @@ def main():
             estado_agente.estados_expandidos = resultado_agente.get("estados_expandidos", 0)
             estado_agente.estados_gerados = resultado_agente.get("estados_gerados", 0)
             estado_agente.fronteira_max = resultado_agente.get("fronteira_max", 0)
+            estado_agente.explorados = resultado_agente.get("explorados", [])
 
             TEMPO_MOVIMENTO_AGENTE = 500
-            ultimo_tempo_agente = pygame.time.get_ticks()
+            # A exploração é exibida primeiro, durando no máximo ~3 segundos
+            TEMPO_EXPLORACAO = max(15, min(80, 3000 // max(1, len(estado_agente.explorados))))
+            inicio_exploracao = pygame.time.get_ticks()
+            ultimo_tempo_agente = inicio_exploracao
             tempo_inicio_missao = time.time()
 
             missao_ativa = True
@@ -178,8 +192,16 @@ def main():
                             if estado_jogador.concluiu:
                                 estado_jogador.tempo = time.time() - tempo_inicio_missao
 
-                # Movimentação passo-a-passo do agente no grid
-                if not estado_agente.concluiu:
+                # Fase 1: revela gradualmente as posições exploradas pela busca
+                if estado_agente.indice_exploracao < len(estado_agente.explorados):
+                    estado_agente.indice_exploracao = min(
+                        len(estado_agente.explorados),
+                        (tempo_atual - inicio_exploracao) // TEMPO_EXPLORACAO + 1,
+                    )
+                    ultimo_tempo_agente = tempo_atual
+
+                # Fase 2: movimentação passo-a-passo do agente no grid
+                elif not estado_agente.concluiu:
                     if tempo_atual - ultimo_tempo_agente > TEMPO_MOVIMENTO_AGENTE:
                         if estado_agente.indice_caminho < len(estado_agente.caminho_pre_calculado) - 1:
                             estado_agente.indice_caminho += 1
@@ -202,7 +224,8 @@ def main():
                 retangulo_voltar = desenhar_tela_principal(
                     tela, (LARGURA, ALTURA), cenario,
                     estado_jogador, estado_agente,
-                    imagens_jogador, imagens_agente
+                    imagens_jogador, imagens_agente,
+                    tamanho_celula=tamanho_celula, nome_algoritmo=nome_algoritmo
                 )
 
                 if estado_jogador.concluiu and estado_agente.concluiu:
