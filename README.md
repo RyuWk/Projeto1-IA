@@ -47,3 +47,7 @@ A simulação busca apresentar, de forma visual e acessível, informações rela
    pip install pygame
    ```
 5. Executar o projeto
+
+   ```bash
+   python main.py
+   ```
