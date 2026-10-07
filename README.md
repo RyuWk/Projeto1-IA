@@ -42,6 +42,7 @@ A simulação busca apresentar, de forma visual e acessível, informações rela
 1. Clonar o repositório
 2. Entrar na pasta
 3. Instalar Pygame
+   
    ```bash
    pip install pygame
    ```
